@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+.venv/  # Or your virtual environment name
+venv/
+instance/  # If you're using Flask's instance folders
+*.DS_Store  # For macOS
+.idea/      # For JetBrains IDEs
+*.egg-info

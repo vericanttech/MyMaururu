@@ -1,0 +1,168 @@
+{% extends "_base.html" %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto bg-white rounded-lg shadow-md p-4 sm:p-8 my-8">
+    <!-- Image container with zoom functionality -->
+    <div class="relative mb-4">
+        <div class="aspect-w-4 aspect-h-3 rounded-lg overflow-hidden">
+            <img
+                src="{{ url_for('static', filename=product['image_path']) }}"
+                alt="{{ product['product_name'] }}"
+                class="w-full h-96 object-cover rounded-lg cursor-zoom-in hover:opacity-95 transition-opacity"
+                id="productImage"
+                onclick="openZoomModal()">
+        </div>
+        <button
+            class="absolute bottom-4 right-4 bg-black/50 text-white px-4 py-2 rounded-lg backdrop-blur-sm hover:bg-black/60 transition-colors"
+            onclick="openZoomModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 inline-block mr-1" viewBox="0 0 20 20" fill="currentColor">
+                <path d="M5 8a1 1 0 011-1h1V6a1 1 0 012 0v1h1a1 1 0 110 2H9v1a1 1 0 11-2 0V9H6a1 1 0 01-1-1z"/>
+                <path fill-rule="evenodd" d="M2 8a6 6 0 1110.89 3.476l4.817 4.817a1 1 0 01-1.414 1.414l-4.816-4.816A6 6 0 012 8zm6-4a4 4 0 100 8 4 4 0 000-8z" clip-rule="evenodd"/>
+            </svg>
+            Zoom
+        </button>
+    </div>
+
+    <!-- Product information -->
+    <div class="space-y-4">
+        <h1 class="text-2xl sm:text-3xl font-bold">{{ product['product_name'] }}</h1>
+
+        <div class="space-y-2">
+            {% if product['discount'] > 0 %}
+                <div class="flex items-center gap-2">
+                    <p class="text-xl sm:text-2xl font-bold line-through text-gray-500">${{ "%.2f"|format(product['price']) }}</p>
+                    <p class="text-xl sm:text-2xl font-bold text-red-600">${{ "%.2f"|format(product['price'] * (1 - product['discount']/100)) }}</p>
+                </div>
+                <p class="text-sm font-semibold text-red-600">Save {{ product['discount'] }}% off retail price!</p>
+            {% else %}
+                <p class="text-xl sm:text-2xl font-bold">${{ "%.2f"|format(product['price']) }}</p>
+            {% endif %}
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 pt-4">
+            <a href="{{ product['amazon_link'] }}"
+               target="_blank"
+               rel="noopener noreferrer"
+               class="bg-yellow-500 hover:bg-yellow-600 text-white font-bold py-3 px-6 rounded-lg text-center transition-colors flex-1">
+                Buy on Amazon
+            </a>
+            <a href="{{ url_for('category_products', category=product['category']) }}"
+               class="text-blue-600 hover:text-blue-800 font-semibold py-3 px-6 border border-blue-600 rounded-lg text-center transition-colors hover:bg-blue-50 flex-1 sm:flex-none">
+                Back to {{ product['category']|title }}
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Zoom Modal -->
+<div id="zoomModal" class="fixed inset-0 bg-black/90 hidden z-50" onclick="closeZoomModal()">
+    <div class="absolute top-4 right-4 z-10">
+        <button
+            class="text-white hover:text-gray-300 transition-colors p-2"
+            onclick="closeZoomModal()">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+    <div class="w-full h-full flex items-center justify-center p-4">
+        <img
+            src="{{ url_for('static', filename=product['image_path']) }}"
+            alt="{{ product['product_name'] }}"
+            class="max-w-full max-h-full object-contain"
+            id="zoomedImage">
+    </div>
+</div>
+
+<script>
+// Zoom functionality
+let zoomModal = document.getElementById('zoomModal');
+let zoomedImage = document.getElementById('zoomedImage');
+let touchStartX = 0;
+let touchStartY = 0;
+
+function openZoomModal() {
+    zoomModal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    // Initialize pan & zoom if on desktop
+    if (window.innerWidth >= 640) {
+        initializeImagePanZoom();
+    }
+}
+
+function closeZoomModal() {
+    zoomModal.classList.add('hidden');
+    document.body.style.overflow = '';
+    resetZoom();
+}
+
+function resetZoom() {
+    if (zoomedImage) {
+        zoomedImage.style.transform = '';
+        zoomedImage.style.cursor = 'zoom-in';
+        scale = 1;
+    }
+}
+
+// Close modal on escape key
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeZoomModal();
+    }
+});
+
+// Handle touch events for mobile pinch zoom
+let scale = 1;
+let currentScale = 1;
+
+zoomedImage.addEventListener('touchstart', function(e) {
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        touchStartX = Math.abs(e.touches[0].pageX - e.touches[1].pageX);
+        touchStartY = Math.abs(e.touches[0].pageY - e.touches[1].pageY);
+        currentScale = scale;
+    }
+});
+
+zoomedImage.addEventListener('touchmove', function(e) {
+    if (e.touches.length === 2) {
+        e.preventDefault();
+        const touchCurrentX = Math.abs(e.touches[0].pageX - e.touches[1].pageX);
+        const touchCurrentY = Math.abs(e.touches[0].pageY - e.touches[1].pageY);
+        const touchStartDistance = Math.sqrt(touchStartX * touchStartX + touchStartY * touchStartY);
+        const touchCurrentDistance = Math.sqrt(touchCurrentX * touchCurrentX + touchCurrentY * touchCurrentY);
+        scale = currentScale * (touchCurrentDistance / touchStartDistance);
+        scale = Math.min(Math.max(1, scale), 3); // Limit zoom between 1x and 3x
+        zoomedImage.style.transform = `scale(${scale})`;
+    }
+});
+
+// Desktop zoom functionality
+let isDragging = false;
+let startX, startY, translateX = 0, translateY = 0;
+
+function initializeImagePanZoom() {
+    zoomedImage.style.cursor = 'zoom-in';
+    let isZoomed = false;
+
+    zoomedImage.addEventListener('click', function(e) {
+        if (!isZoomed) {
+            const rect = zoomedImage.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            const transformOrigin = `${x}px ${y}px`;
+
+            zoomedImage.style.transformOrigin = transformOrigin;
+            zoomedImage.style.transform = 'scale(2.5)';
+            zoomedImage.style.cursor = 'zoom-out';
+            isZoomed = true;
+        } else {
+            zoomedImage.style.transform = '';
+            zoomedImage.style.cursor = 'zoom-in';
+            isZoomed = false;
+        }
+    });
+}
+</script>
+{% endblock %}
